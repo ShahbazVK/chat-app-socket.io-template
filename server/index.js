@@ -13,8 +13,43 @@ const io = new Server(server, {
   },
 });
 
+const CHAT_BOT = "ChatBot";
+let chatRoom = "";
+let allUsers = [];
+let chatRoomUsers = [];
+
 io.on("connection", (socket) => {
-  console.log(`user connected ${socket.id}`);
+  socket.on("join_room", (data) => {
+    const { username, room } = data;
+    socket.join(room);
+
+    let createdTime = Date.now();
+
+    socket.to(room).emit("receive_message", {
+      message: `${username} has joined the chat room`,
+      username: CHAT_BOT,
+      createdTime,
+    });
+
+    socket.emit("receive_message", {
+      message: `Welcome ${username}`,
+      username: CHAT_BOT,
+      createdTime,
+    });
+
+    chatRoom = room;
+    allUsers.push({ id: socket.id, username, room });
+    chatRoomUsers = allUsers.filter((user) => user.room === room);
+    socket.to(room).emit("chatroom_users", chatRoomUsers);
+    socket.emit("chatroom_users", chatRoomUsers);
+
+    // socket.emit('last_100_messages', last100Messages);
+  });
+
+  socket.on("send_message", (data) => {
+    io.in(data.room).emit("receive_message", data); // Send to all users in room, including sender
+    // db
+  });
 });
 
-server.listen(3000, () => "Server is running on port 3000");
+server.listen(3000, () => console.log("Server is running on port 3000"));
